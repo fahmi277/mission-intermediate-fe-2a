@@ -27,7 +27,7 @@ export const RatingStars = ({ rating, reviewCount, className = '' }: RatingStars
   }
 
   return (
-    <div className={`flex items-center gap-1 text-yellow-500 mb-2 ${className}`}>
+    <div className={`flex items-center gap-1 text-yellow-500 ${className}`}>
       {stars}
       {reviewCount !== undefined && (
         <span className="text-xs text-gray-500 ml-2">({reviewCount})</span>

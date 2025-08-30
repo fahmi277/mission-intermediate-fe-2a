@@ -1,18 +1,132 @@
+import { useState, useMemo } from "react";
 import HeaderDashboard from "../components/HeaderDashboard";
 import { useNavigate } from "react-router-dom";
 import FilterMenu from "../components/molecules/FilterMenu";
 import FooterContent from "../components/molecules/FooterContent";
-import courseImage from '../data/courseImage'; // import courseImage from the correct path
-import avatarImage from "../data/avatarImage"; // import avatarImage from the correct path
 import CourseCard from "../components/molecules/CourseCard";
 import CustomPagination from "../components/molecules/CustomPagination";
 import SortDropdown from "../components/molecules/SortDropDown";
-import { Search } from "lucide-react";
+import SearchBar from "../components/molecules/SearchBar";
 
-
+import { useCourses } from "../context/CourseContext";
+import type { Course, FilterState } from "../types/course";
 
 const AllProducts = () => {
   const navigate = useNavigate();
+  
+  // Get courses from context
+  const { state: { courses } } = useCourses();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<FilterState>({
+    bidangStudi: [],
+    harga: [],
+    durasi: []
+  });
+  const [sortBy] = useState<"rating" | "price-low" | "price-high" | "newest">("rating"); // setSortBy removed as not used yet
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
+
+  // Helper functions untuk filtering
+  const matchesPriceFilter = (course: Course, priceFilters: string[]) => {
+    if (priceFilters.length === 0) return true;
+    
+    return priceFilters.some(filter => {
+      switch (filter) {
+        case "Gratis":
+          return course.price.current === 0;
+        case "< Rp100.000":
+          return course.price.current < 100000;
+        case "Rp100.000 – Rp500.000":
+          return course.price.current >= 100000 && course.price.current <= 500000;
+        case "> Rp500.000":
+          return course.price.current > 500000;
+        default:
+          return true;
+      }
+    });
+  };
+
+  const matchesDurationFilter = (course: Course, durationFilters: string[]) => {
+    if (durationFilters.length === 0) return true;
+    
+    const duration = parseInt(course.duration);
+    return durationFilters.some(filter => {
+      switch (filter) {
+        case "Kurang dari 4 Jam":
+          return duration < 4;
+        case "4 – 8 Jam":
+          return duration >= 4 && duration <= 8;
+        case "Lebih dari 8 Jam":
+          return duration > 8;
+        default:
+          return true;
+      }
+    });
+  };
+
+  // Array operations dengan useMemo untuk performance
+  const filteredAndSortedCourses = useMemo(() => {
+    let filtered = courses.filter(course => {
+      // Filter berdasarkan search query
+      const matchesSearch = 
+        course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.instructor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Filter berdasarkan bidang studi
+      const matchesBidangStudi = 
+        filters.bidangStudi.length === 0 || 
+        filters.bidangStudi.includes(course.category);
+
+      // Filter berdasarkan harga
+      const matchesPrice = matchesPriceFilter(course, filters.harga);
+
+      // Filter berdasarkan durasi
+      const matchesDuration = matchesDurationFilter(course, filters.durasi);
+
+      return matchesSearch && matchesBidangStudi && matchesPrice && matchesDuration;
+    });
+
+    // Sorting dengan array methods
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "rating":
+          return b.rating - a.rating;
+        case "price-low":
+          return a.price.current - b.price.current;
+        case "price-high":
+          return b.price.current - a.price.current;
+        case "newest":
+          return b.id.localeCompare(a.id);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [courses, searchQuery, filters, sortBy]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedCourses.length / itemsPerPage);
+  const paginatedCourses = filteredAndSortedCourses.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Event handlers
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
   return (
     <div>
       <HeaderDashboard />
@@ -29,64 +143,79 @@ const AllProducts = () => {
 
         <div className="flex flex-col md:flex-row justify-between">
 
-
-
-          <FilterMenu className="mr-4" />
+          {/* FilterMenu with proper props */}
+          <FilterMenu 
+            className="mr-4" 
+            filters={filters}
+            onFilterChange={handleFilterChange}
+          />
+          
           {/* Urutkan dan Cari Kelas */}
-
           <div>
-
-
             <div className="flex flex-row gap-4 justify-end mb-4 h-[60px]">
-
               <SortDropdown />
+              
+              {/* Search Bar */}
+              <SearchBar 
+                onSearch={handleSearch}
+                placeholder="Cari Kelas"
+              />
+            </div>
 
+            {/* Results Info */}
+            <div className="mb-4">
+              <p className="text-gray-600 text-sm">
+                Menampilkan {paginatedCourses.length} dari {filteredAndSortedCourses.length} kelas
+                {searchQuery && <span> untuk "{searchQuery}"</span>}
+                - Halaman {currentPage} dari {totalPages}
+              </p>
+            </div>
 
-              {/* Cari Kelas (Input) */}
-              <div className="relative w-full md:max-w-[240px] rounded-lg bg-white shadow-md p-4 flex flex-row items-center justify-between">
-                <input
-                  type="text"
-                  placeholder="Cari Kelas"
-                  className="text-sm text-gray-800 placeholder-gray-400 focus:outline-none w-full"
+            {/* Course Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+              {paginatedCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  courseImage={course.image}
+                  avatarImage={course.instructor.avatar}
+                  courseName={course.title}
+                  instructorName={course.instructor.name}
+                  instructorJob={course.instructor.job}
+                  instructorCompany={course.instructor.company}
+                  rating={course.rating}
+                  reviewCount={course.reviewCount}
+                  price={`Rp ${course.price.current.toLocaleString()}`}
+                  onClick={() => navigate(`/detail-product/${course.id}`)}
                 />
-                <Search className="w-4 h-4 text-primary ml-2" />
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {filteredAndSortedCourses.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg mb-2">Tidak ada kelas yang ditemukan</p>
+                <p className="text-gray-400 text-sm">Coba ubah filter atau kata kunci pencarian</p>
+                <button 
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilters({ bidangStudi: [], harga: [], durasi: [] });
+                    setCurrentPage(1);
+                  }}
+                  className="mt-4 px-6 py-2 bg-[#FF5C2B] text-white rounded-lg hover:bg-[#e5511f] transition-colors"
+                >
+                  Reset Semua Filter
+                </button>
               </div>
-            </div>
-
-
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1  lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-
-              {
-                // Generate multiple CourseCard components with random images and avatars
-                Array.from({ length: 9 }).map((_, index) => (
-                  <CourseCard
-                    key={index}
-                    courseImage={courseImage[index]}
-                    avatarImage={avatarImage[index]}
-                    courseName="Big 4 Auditor Financial Analyst"
-                    instructorName="Jenna Ortega"
-                    instructorJob="Senior Accountant"
-                    instructorCompany="Harisenin"
-                    rating={(index % 5) + 3} // Example rating from 1 to 5
-                    reviewCount={120}
-                    price={`Rp ${(100 +
-                      Math.floor(Math.random() * 5) * 150).toLocaleString()} K`} // Example price variation
-                    onClick={() => navigate("/detail-product")}
-                  />
-                ))
-              }
-
-            </div>
-            <CustomPagination
-              totalPages={5} // Example total pages
-            // onPageChange={(page) => console.log(`Current Page: ${page}`)}
-            />
-
+            )}
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <CustomPagination
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
           </div>
-
-
-
         </div>
       </div>
       <FooterContent />

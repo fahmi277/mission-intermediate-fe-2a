@@ -14,7 +14,7 @@ import type { Course } from "../types/course";
 const DetailProduct: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { state: { courses }, actions: { getCourseById, updateCourse, deleteCourse } } = useCourses();
+  const {actions: { getCourseById, updateCourse, deleteCourse } } = useCourses();
   
   const [course, setCourse] = useState<Course | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);

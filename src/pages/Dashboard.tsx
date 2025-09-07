@@ -16,7 +16,7 @@ import { useCart } from "../hooks/useCart";
 
 const Dashboard: React.FC = () => {
     // Get courses from context
-    const { state: { courses, loading, error }, actions: { addCourse } } = useCourses();
+    const { state: { courses }, actions: { addCourse } } = useCourses();
     
     // Local state management dengan useState
     const [searchQuery, setSearchQuery] = useState("");

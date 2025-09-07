@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Search, Filter, Calendar, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Search, Calendar, CheckCircle, XCircle, Clock } from "lucide-react";
 import type { Course } from "../types/course";
 
 interface OrderItem {

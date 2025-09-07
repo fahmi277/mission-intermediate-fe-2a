@@ -10,7 +10,7 @@ type TutorCardProps = {
   avatar?: string;
 };
 
-const TutorCard: React.FC<TutorCardProps> = ({ name, title, description, company, avatar }) => {
+const TutorCard: React.FC<TutorCardProps> = ({ name, title, description, company }) => {
   // Generate random avatar if none provided
   const getRandomAvatar = () => {
     const avatarNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];

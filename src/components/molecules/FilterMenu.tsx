@@ -1,16 +1,68 @@
 import { Book, Clock, ChevronDown, ChevronUp, Wallet } from "lucide-react";
 import { useState } from "react";
-
+import type { FilterState } from "../../types/course";
 
 interface FilterMenuProps {
     className?: string;
+    onFilterChange: (filters: FilterState) => void;
+    filters?: FilterState; // Make filters optional
 }
 
-const FilterMenu = ({ className }: FilterMenuProps) => {
+// Filter options definition
+const filterOptions = {
+    bidangStudi: [
+        "Pemasaran",
+        "Digital & Teknologi", 
+        "Pengembangan Diri",
+        "Bisnis Manajemen"
+    ],
+    harga: [
+        "Gratis",
+        "< Rp100.000",
+        "Rp100.000 – Rp500.000", 
+        "> Rp500.000"
+    ],
+    durasi: [
+        "Kurang dari 4 Jam",
+        "4 – 8 Jam",
+        "Lebih dari 8 Jam"
+    ]
+};
+
+const FilterMenu = ({ className, onFilterChange, filters }: FilterMenuProps) => {
     const [openSection, setOpenSection] = useState<string | null>(null);
+
+    // Safe default values for filters
+    const safeFilters: FilterState = {
+        bidangStudi: filters?.bidangStudi || [],
+        harga: filters?.harga || [],
+        durasi: filters?.durasi || []
+    };
 
     const toggleSection = (section: string) => {
         setOpenSection(prev => (prev === section ? null : section));
+    };
+
+    const handleFilterChange = (
+        category: keyof FilterState, 
+        value: string, 
+        checked: boolean
+    ) => {
+        const updatedFilters = {
+            ...safeFilters,
+            [category]: checked 
+                ? [...safeFilters[category], value]
+                : safeFilters[category].filter(item => item !== value)
+        };
+        onFilterChange(updatedFilters);
+    };
+
+    const resetFilters = () => {
+        onFilterChange({
+            bidangStudi: [],
+            harga: [],
+            durasi: []
+        });
     };
 
     return (
@@ -25,7 +77,10 @@ const FilterMenu = ({ className }: FilterMenuProps) => {
                     <h6>
                         <span className="text-lg text-[#333333] font-semibold">Filter</span>
                     </h6>
-                    <button className="text-[#FF5C2B] font-semibold text-[16px] flex items-center gap-1 hover:underline">
+                    <button 
+                        onClick={resetFilters}
+                        className="text-[#FF5C2B] font-semibold text-[16px] flex items-center gap-1 hover:underline"
+                    >
                         Reset
                     </button>
                 </div>
@@ -48,26 +103,19 @@ const FilterMenu = ({ className }: FilterMenuProps) => {
                                 <ChevronDown className="w-4 h-4 text-primary" />
                             )}
                         </div>
-                        {openSection === "bidang" || window.innerWidth >= 768 && (
+                        {(openSection === "bidang" || window.innerWidth >= 768) && (
                             <div className="mt-3 space-y-2 text-sm text-[#333] flex flex-col">
-
-                                <label className="flex items-center gap-2 text-sm text-gray-800">
-                                    <input type="checkbox" className="w-4 h-4 bg-primary" />
-                                    Pemasaran
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-gray-800">
-                                    <input type="checkbox" className="w-4 h-4 bg-primary" />
-                                    Digital & Teknologi
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-gray-800">
-                                    <input type="checkbox" className="w-4 h-4 bg-primary" />
-                                    Pengembangan Diri
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-gray-800">
-                                    <input type="checkbox" className="w-4 h-4 bg-primary" />
-                                    Bisnis Manajemen
-                                </label>
-
+                                {filterOptions.bidangStudi.map((option) => (
+                                    <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 bg-primary"
+                                            checked={safeFilters.bidangStudi.includes(option)}
+                                            onChange={(e) => handleFilterChange('bidangStudi', option, e.target.checked)}
+                                        />
+                                        {option}
+                                    </label>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -88,12 +136,19 @@ const FilterMenu = ({ className }: FilterMenuProps) => {
                                 <ChevronDown className="w-4 h-4 text-primary" />
                             )}
                         </div>
-                        {openSection === "harga" || window.innerWidth >= 768 && (
-                            <div className="mt-3 space-y-2 text-sm text-[#333]  flex flex-col">
-                                <label><input type="checkbox" /> Gratis</label>
-                                <label><input type="checkbox" />  Rp100.000</label>
-                                <label><input type="checkbox" /> Rp100.000 – Rp500.000</label>
-                                <label><input type="checkbox" />  Rp500.000</label>
+                        {(openSection === "harga" || window.innerWidth >= 768) && (
+                            <div className="mt-3 space-y-2 text-sm text-[#333] flex flex-col">
+                                {filterOptions.harga.map((option) => (
+                                    <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 bg-primary"
+                                            checked={safeFilters.harga.includes(option)}
+                                            onChange={(e) => handleFilterChange('harga', option, e.target.checked)}
+                                        />
+                                        {option}
+                                    </label>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -114,11 +169,19 @@ const FilterMenu = ({ className }: FilterMenuProps) => {
                                 <ChevronDown className="w-4 h-4 text-primary" />
                             )}
                         </div>
-                        {openSection === "durasi" || window.innerWidth >= 768 && (
+                        {(openSection === "durasi" || window.innerWidth >= 768) && (
                             <div className="mt-3 space-y-2 text-sm text-[#333] flex flex-col">
-                                <label><input type="checkbox" /> Kurang dari 4 Jam</label>
-                                <label><input type="checkbox" /> 4 – 8 Jam</label>
-                                <label><input type="checkbox" /> Lebih dari 8 Jam</label>
+                                {filterOptions.durasi.map((option) => (
+                                    <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 bg-primary"
+                                            checked={safeFilters.durasi.includes(option)}
+                                            onChange={(e) => handleFilterChange('durasi', option, e.target.checked)}
+                                        />
+                                        {option}
+                                    </label>
+                                ))}
                             </div>
                         )}
                     </div>

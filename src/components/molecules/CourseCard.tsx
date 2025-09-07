@@ -61,10 +61,13 @@ const CourseCard = ({ courseImage, avatarImage, courseName, instructorName, inst
 
 
             {/* Content */}
-            <div className="px-4 mb-4 flex flex-row gap-4 justify-between items-center">
-
-                {ratingStars}
-                <div className="text-green-600 font-semibold text-lg">{price}</div>
+            <div className="px-4 mb-4 flex flex-row justify-between items-center">
+                <div className="flex items-center gap-2">
+                    {ratingStars}
+                </div>
+                <div className="flex items-center text-green-600 font-semibold text-md lg:text-md">
+                    {price}
+                </div>
             </div>
         </div>
     );

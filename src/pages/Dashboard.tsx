@@ -16,7 +16,7 @@ import { useCart } from "../hooks/useCart";
 
 const Dashboard: React.FC = () => {
     // Get courses from context
-    const { state: { courses }, actions: { addCourse } } = useCourses();
+    const { state: { courses }, actions: { addCourse, updateCourse, deleteCourse } } = useCourses();
     
     // Local state management dengan useState
     const [searchQuery, setSearchQuery] = useState("");
@@ -28,6 +28,8 @@ const Dashboard: React.FC = () => {
     });
     const [sortBy, setSortBy] = useState<"rating" | "price-low" | "price-high" | "newest">("rating");
     const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
+    const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     const navigate = useNavigate();
     const { getTotalItems } = useCart();
@@ -141,13 +143,58 @@ const Dashboard: React.FC = () => {
     };
 
     // Handler untuk menambah course baru
-    const handleAddCourse = (courseData: Omit<Course, "id">) => {
-        addCourse(courseData);
-        setIsAddCourseOpen(false);
+    const handleAddCourse = async (courseData: Omit<Course, "id">) => {
+        try {
+            await addCourse(courseData);
+            setIsAddCourseOpen(false);
+        } catch (error) {
+            console.error('Error adding course:', error);
+            alert('Gagal menambahkan course');
+        }
     };
 
     const handleCancelAddCourse = () => {
         setIsAddCourseOpen(false);
+        setIsEditMode(false);
+        setEditingCourse(null);
+    };
+
+    // Handler untuk edit course
+    const handleEditCourse = (course: Course) => {
+        setEditingCourse(course);
+        setIsEditMode(true);
+        setIsAddCourseOpen(true);
+    };
+
+    // Handler untuk update course
+    const handleUpdateCourse = async (courseData: Omit<Course, "id">) => {
+        if (editingCourse) {
+            try {
+                const updatedCourse: Course = {
+                    ...courseData,
+                    id: editingCourse.id
+                };
+                await updateCourse(updatedCourse);
+                setIsAddCourseOpen(false);
+                setIsEditMode(false);
+                setEditingCourse(null);
+            } catch (error) {
+                console.error('Error updating course:', error);
+                alert('Gagal mengupdate course');
+            }
+        }
+    };
+
+    // Handler untuk delete course
+    const handleDeleteCourse = async (courseId: string) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus course ini?')) {
+            try {
+                await deleteCourse(courseId);
+            } catch (error) {
+                console.error('Error deleting course:', error);
+                alert('Gagal menghapus course');
+            }
+        }
     };
 
     return (
@@ -269,6 +316,9 @@ const Dashboard: React.FC = () => {
                                     reviewCount={course.reviewCount}
                                     price={`Rp ${course.price.current.toLocaleString()}`}
                                     onClick={() => navigate(`/detail-product/${course.id}`)}
+                                    onEdit={() => handleEditCourse(course)}
+                                    onDelete={() => handleDeleteCourse(course.id)}
+                                    showActions={true}
                                 />
                             ))}
                         </div>
@@ -323,9 +373,11 @@ const Dashboard: React.FC = () => {
                                 </button>
                             </div>
                             <AddCourseForm
-                                onAddCourse={handleAddCourse}
+                                onAddCourse={isEditMode ? handleUpdateCourse : handleAddCourse}
                                 onCancel={handleCancelAddCourse}
                                 isOpen={isAddCourseOpen}
+                                editMode={isEditMode}
+                                initialData={editingCourse || undefined}
                             />
                         </div>
                     </div>

@@ -2,6 +2,8 @@ import React from "react";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import UserListCard from "../components/molecules/UserListCard";
 
 interface AuthCardProps {
   heading: string;
@@ -17,14 +19,24 @@ const LoginPage: React.FC<AuthCardProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { state: authState, actions: { login, clearError } } = useAuth();
 
   //   add state for handle input form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Handler untuk auto-fill dari UserListCard
+  const handleUserSelect = (userEmail: string, userPassword: string) => {
+    setEmail(userEmail);
+    setPassword(userPassword);
+  };
+
   //  submit handler
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Clear any previous errors
+    clearError();
 
     // Validasi email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,17 +51,29 @@ const LoginPage: React.FC<AuthCardProps> = ({
       return;
     }
 
-    // ✅ Jika lolos validasi
-    console.log("Email:", email);
-    console.log("Password:", password);
-    navigate("/dashboard");
+    // Attempt login with MockAPI
+    const success = await login({
+      userEmail: email,
+      userPassword: password
+    });
+
+    if (success) {
+      console.log("Login berhasil");
+      navigate("/dashboard");
+    } else {
+      // Error will be shown from auth state
+      alert(authState.error || "Login gagal");
+    }
   };
 
   // const togglePasswordVisibility = () => {
   //     setShowPassword(!showPassword)
   // }
   return (
-    <div className="min-h-screen bg-[#fffdf2]">
+    <div className="min-h-screen bg-[#fffdf2] relative">
+      {/* User List Card - hanya tampil di mode login */}
+      {mode === "login" && <UserListCard onSelectUser={handleUserSelect} mode="login" />}
+      
       <div className="h-[74px] w-full bg-white flex items-center">
         <img
           src="logo.png"
@@ -125,12 +149,10 @@ const LoginPage: React.FC<AuthCardProps> = ({
               <>
                 <button
                   type="submit"
-                  className="w-full bg-[#3ECF4C] text-white font-semibold py-2 px-4 rounded hover:bg-green-600 transition duration-200 mb-4"
-                  onClick={() => {
-                    // navigate("/dashboard");
-                  }}
+                  disabled={authState.loading}
+                  className="w-full bg-[#3ECF4C] text-white font-semibold py-2 px-4 rounded hover:bg-green-600 transition duration-200 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Masuk
+                  {authState.loading ? "Memproses..." : "Masuk"}
                 </button>
                 <button
                   type="button"

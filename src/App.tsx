@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { CourseProvider } from './context/CourseContext';
+import { AuthProvider } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
@@ -13,7 +14,8 @@ import OrderHistory from './pages/OrderHistory';
 
 function App() {
   return (
-    <CourseProvider>
+    <AuthProvider>
+      <CourseProvider>
       <Routes>
         <Route
           path="/"
@@ -32,8 +34,8 @@ function App() {
             <LoginPage
               mode="login"
               onSubmit={() => {}}
-              heading="Pendaftaran Akun"
-              subheading="Yuk, daftarkan akunmu sekarang juga!"
+               heading="Masuk ke Akun"
+              subheading="Yuk, lanjutin belajarmu di videobelajar."
             />
           }
         />
@@ -58,6 +60,7 @@ function App() {
         <Route path="/order-history" element={<OrderHistory />} />
       </Routes>
     </CourseProvider>
+    </AuthProvider>
   );
 }
 

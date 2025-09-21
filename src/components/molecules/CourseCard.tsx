@@ -1,6 +1,7 @@
 // import React from 'react';
 import { useMemo } from 'react';
 import { RatingStars } from './RatingStars';
+import { Edit, Trash2 } from 'lucide-react';
 
 type CourseType = {
     courseImage: string
@@ -13,17 +14,46 @@ type CourseType = {
     reviewCount: number
     price: string
     onClick?: () => void // Optional click handler
+    onEdit?: () => void // Optional edit handler
+    onDelete?: () => void // Optional delete handler
+    showActions?: boolean // Flag to show/hide action buttons
 }
 
-const CourseCard = ({ courseImage, avatarImage, courseName, instructorName, instructorJob, instructorCompany, rating, reviewCount, price, onClick }: CourseType) => {
+const CourseCard = ({ courseImage, avatarImage, courseName, instructorName, instructorJob, instructorCompany, rating, reviewCount, price, onClick, onEdit, onDelete, showActions = false }: CourseType) => {
     const ratingStars = useMemo(() => <RatingStars rating={rating} reviewCount={reviewCount} />, [rating, reviewCount]);
 
-
     return (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden w-full mx-auto"
-            onClick={() => {
-                if (onClick) onClick(); // Call the onClick handler if provided
-            }}>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden w-full mx-auto relative">
+            {/* Action buttons */}
+            {showActions && (
+                <div className="absolute top-2 right-2 flex gap-1 z-10">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onEdit) onEdit();
+                        }}
+                        className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded"
+                    >
+                        <Edit size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDelete) onDelete();
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white p-1 rounded"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            )}
+            
+            <div 
+                className="cursor-pointer"
+                onClick={() => {
+                    if (onClick) onClick(); // Call the onClick handler if provided
+                }}
+            >
             {/* Image */}
 
             <div className="p-4 flex flex-row md:flex-col gap-4 items-center md:items-start">
@@ -68,6 +98,7 @@ const CourseCard = ({ courseImage, avatarImage, courseName, instructorName, inst
                 <div className="flex items-center text-green-600 font-semibold text-md lg:text-md">
                     {price}
                 </div>
+            </div>
             </div>
         </div>
     );

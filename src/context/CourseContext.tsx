@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Course } from '../types/course';
-import { coursesData } from '../data/coursesData';
+import type { MockCourse } from '../types/user';
+import APIService from '../services/api';
+import { transformMockCourseToAppCourse, transformAppCourseToMockCourse } from '../utils/courseTransform';
 
 interface CourseState {
   courses: Course[];
@@ -35,12 +37,10 @@ const courseReducer = (state: CourseState, action: CourseAction): CourseState =>
       return { ...state, courses: action.payload, loading: false, error: null };
     
     case 'ADD_COURSE': {
-      const updatedCourses = [...state.courses, action.payload];
-      // Save to localStorage
-      localStorage.setItem('harisenin_courses', JSON.stringify(updatedCourses));
+      // Add course via API
       return { 
         ...state, 
-        courses: updatedCourses,
+        courses: [...state.courses, action.payload],
         error: null 
       };
     }
@@ -49,8 +49,6 @@ const courseReducer = (state: CourseState, action: CourseAction): CourseState =>
       const updatedCourses = state.courses.map(course =>
         course.id === action.payload.id ? action.payload : course
       );
-      // Save to localStorage
-      localStorage.setItem('harisenin_courses', JSON.stringify(updatedCourses));
       return { 
         ...state, 
         courses: updatedCourses,
@@ -60,8 +58,6 @@ const courseReducer = (state: CourseState, action: CourseAction): CourseState =>
     
     case 'DELETE_COURSE': {
       const filteredCourses = state.courses.filter(course => course.id !== action.payload);
-      // Save to localStorage
-      localStorage.setItem('harisenin_courses', JSON.stringify(filteredCourses));
       return { 
         ...state, 
         courses: filteredCourses,
@@ -77,11 +73,11 @@ const courseReducer = (state: CourseState, action: CourseAction): CourseState =>
 interface CourseContextType {
   state: CourseState;
   actions: {
-    addCourse: (courseData: Omit<Course, 'id'>) => void;
-    updateCourse: (course: Course) => void;
-    deleteCourse: (id: string) => void;
+    addCourse: (courseData: Omit<Course, 'id'>) => Promise<void>;
+    updateCourse: (course: Course) => Promise<void>;
+    deleteCourse: (id: string) => Promise<void>;
     getCourseById: (id: string) => Course | undefined;
-    refreshCourses: () => void;
+    refreshCourses: () => Promise<void>;
   };
 }
 
@@ -90,35 +86,18 @@ const CourseContext = createContext<CourseContextType | undefined>(undefined);
 export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(courseReducer, initialState);
 
-  // Load courses from localStorage or use default data
+  // Load courses from MockAPI
   useEffect(() => {
-    const loadCourses = () => {
+    const loadCourses = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       
       try {
-        const savedCourses = localStorage.getItem('harisenin_courses');
-        
-        if (savedCourses) {
-          const parsedCourses = JSON.parse(savedCourses);
-          // Validate data structure
-          if (Array.isArray(parsedCourses) && parsedCourses.length > 0) {
-            dispatch({ type: 'SET_COURSES', payload: parsedCourses });
-          } else {
-            // If invalid data, use default
-            dispatch({ type: 'SET_COURSES', payload: coursesData });
-            localStorage.setItem('harisenin_courses', JSON.stringify(coursesData));
-          }
-        } else {
-          // First time load, use default data
-          dispatch({ type: 'SET_COURSES', payload: coursesData });
-          localStorage.setItem('harisenin_courses', JSON.stringify(coursesData));
-        }
+        const mockCourses = await APIService.getAllCourses();
+        const transformedCourses = mockCourses.map(transformMockCourseToAppCourse);
+        dispatch({ type: 'SET_COURSES', payload: transformedCourses });
       } catch (error) {
         console.error('Error loading courses:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to load courses' });
-        // Fallback to default data
-        dispatch({ type: 'SET_COURSES', payload: coursesData });
-        localStorage.setItem('harisenin_courses', JSON.stringify(coursesData));
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load courses from API' });
       }
     };
 
@@ -126,38 +105,62 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   // Actions
-  const addCourse = (courseData: Omit<Course, 'id'>) => {
-    // Generate unique ID
-    const newId = `course_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newCourse: Course = {
-      ...courseData,
-      id: newId,
-    };
+  const addCourse = async (courseData: Omit<Course, 'id'>) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
     
-    dispatch({ type: 'ADD_COURSE', payload: newCourse });
+    try {
+      const mockCourseData = transformAppCourseToMockCourse(courseData);
+      const newMockCourse = await APIService.createCourse(mockCourseData as Omit<MockCourse, 'id' | 'createdAt'>);
+      const newCourse = transformMockCourseToAppCourse(newMockCourse);
+      
+      dispatch({ type: 'ADD_COURSE', payload: newCourse });
+    } catch (error) {
+      console.error('Error adding course:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to add course' });
+    }
   };
 
-  const updateCourse = (course: Course) => {
-    dispatch({ type: 'UPDATE_COURSE', payload: course });
+  const updateCourse = async (course: Course) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    
+    try {
+      const mockCourseData = transformAppCourseToMockCourse(course);
+      const updatedMockCourse = await APIService.updateCourse(course.id, mockCourseData);
+      const updatedCourse = transformMockCourseToAppCourse(updatedMockCourse);
+      
+      dispatch({ type: 'UPDATE_COURSE', payload: updatedCourse });
+    } catch (error) {
+      console.error('Error updating course:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to update course' });
+    }
   };
 
-  const deleteCourse = (id: string) => {
-    dispatch({ type: 'DELETE_COURSE', payload: id });
+  const deleteCourse = async (id: string) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    
+    try {
+      await APIService.deleteCourse(id);
+      dispatch({ type: 'DELETE_COURSE', payload: id });
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete course' });
+    }
   };
 
   const getCourseById = (id: string): Course | undefined => {
     return state.courses.find(course => course.id === id);
   };
 
-  const refreshCourses = () => {
-    const savedCourses = localStorage.getItem('harisenin_courses');
-    if (savedCourses) {
-      try {
-        const parsedCourses = JSON.parse(savedCourses);
-        dispatch({ type: 'SET_COURSES', payload: parsedCourses });
-      } catch (error) {
-        console.error('Error refreshing courses:', error);
-      }
+  const refreshCourses = async () => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    
+    try {
+      const mockCourses = await APIService.getAllCourses();
+      const transformedCourses = mockCourses.map(transformMockCourseToAppCourse);
+      dispatch({ type: 'SET_COURSES', payload: transformedCourses });
+    } catch (error) {
+      console.error('Error refreshing courses:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to refresh courses' });
     }
   };
 

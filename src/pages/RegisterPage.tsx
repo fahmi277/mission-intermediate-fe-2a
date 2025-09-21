@@ -2,6 +2,8 @@ import React from "react";
 import { useState } from "react";
 import { Eye, EyeOff, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import UserListCard from "../components/molecules/UserListCard";
 
 interface AuthCardProps {
   heading: string;
@@ -16,6 +18,7 @@ const RegisterPage: React.FC<AuthCardProps> = ({
   mode,
 }) => {
   const navigate = useNavigate();
+  const { state: authState, actions: { register, clearError } } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] =
     useState(false);
@@ -28,8 +31,11 @@ const RegisterPage: React.FC<AuthCardProps> = ({
 //   const [address, setAddress] = useState("");
   const [gender, setGender] = useState("");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Clear any previous errors
+    clearError();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -52,20 +58,48 @@ const RegisterPage: React.FC<AuthCardProps> = ({
       return;
     }
 
-    // Validasi lainnya bisa ditambahkan sesuai kebutuhan
+    if (!gender) {
+      alert("Pilih jenis kelamin");
+      return;
+    }
 
-    // Jika lolos semua validasi
-    alert("Registrasi berhasil, anda akan diarahkan ke dashboard ..");
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 1000);
+    // Attempt registration with MockAPI
+    const success = await register({
+      userEmail: email,
+      userPassword: password,
+      userPhoneNumber: phone,
+      userGender: gender as 'male' | 'female'
+    });
+
+    if (success) {
+      alert("Registrasi berhasil, anda akan diarahkan ke dashboard ..");
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
+    } else {
+      alert(authState.error || "Registrasi gagal");
+    }
+  };
+
+  // Handler untuk auto-fill dari UserListCard (untuk referensi)
+  const handleUserSelect = (userEmail: string, userPassword: string) => {
+    setEmail(userEmail);
+    setPassword(userPassword);
+    // Set default values untuk field lain
+    setName("User Test");
+    setPhone("081234567890");
+    setGender("male");
+    setPasswordConfirmation(userPassword);
   };
 
   // const togglePasswordVisibility = () => {
   //     setShowPassword(!showPassword)
   // }
   return (
-    <div className="min-h-screen bg-[#fffdf2]">
+    <div className="min-h-screen bg-[#fffdf2] relative">
+      {/* User List Card - untuk referensi data */}
+      {mode === "register" && <UserListCard onSelectUser={handleUserSelect} mode="register" />}
+      
       <div className="h-[74px] w-full bg-white flex items-center">
         <img
           src="logo.png"
@@ -204,15 +238,15 @@ const RegisterPage: React.FC<AuthCardProps> = ({
             </div>
             <div className="w-full relative">
               <label
-                htmlFor="password"
+                htmlFor="passwordConfirmation"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
                 Konfirmasi Kata Sandi <span className="text-red-500">*</span>
               </label>
               <input
                 type={showPasswordConfirmation ? "text" : "password"}
-                id="password"
-                name="password"
+                id="passwordConfirmation"
+                name="passwordConfirmation"
                 required
                 value={passwordConfirmation}
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
@@ -253,9 +287,10 @@ const RegisterPage: React.FC<AuthCardProps> = ({
             ) : (
               <button
                 type="submit"
-                className="w-full bg-[#3ECF4C] text-white font-semibold py-2 px-4 rounded hover:bg-green-600 transition duration-200"
+                disabled={authState.loading}
+                className="w-full bg-[#3ECF4C] text-white font-semibold py-2 px-4 rounded hover:bg-green-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Daftar
+                {authState.loading ? "Memproses..." : "Daftar"}
               </button>
             )}
             <div className="flex items-center justify-center gap-4 my-6">

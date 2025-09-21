@@ -3,7 +3,7 @@ import { X, Plus } from "lucide-react";
 import type { Course } from "../../types/course";
 
 interface AddCourseFormProps {
-  onAddCourse: (course: Omit<Course, 'id'>) => void;
+  onAddCourse: (course: Omit<Course, 'id'>) => Promise<void>;
   onCancel: () => void;
   isOpen: boolean;
   editMode?: boolean;
@@ -132,12 +132,17 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
-      onAddCourse(formData);
-      resetForm();
+      try {
+        await onAddCourse(formData);
+        resetForm();
+      } catch (error) {
+        console.error('Error submitting course:', error);
+        // You could add error handling here if needed
+      }
     }
   };
 
